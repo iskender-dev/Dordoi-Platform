@@ -19,21 +19,21 @@ public class SecurityFilter {
     private final JwtFilter jwtFilter;
     private static final String[] WHITE_LIST_URL = { "/api/v1/auth/**", "/v2/api-docs", "/v3/api-docs",
             "/v3/api-docs/**", "/swagger-resources", "/swagger-resources/**", "/configuration/ui",
-            "/configuration/security", "/swagger-ui/**", "/webjars/**", "/swagger-ui.html", "/api/auth/register",
-            "/api/test/**", "/authenticate", "/api/auth/login", "/api/pages/**"};
+            "/configuration/security", "/swagger-ui/**", "/webjars/**", "/swagger-ui.html",
+            "/authenticate", "/auth/**"};
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(WHITE_LIST_URL).permitAll()
-                        .anyRequest().permitAll())
+                        .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(form -> form
-                        .loginPage("/api/auth/login")
-                        .loginProcessingUrl("/api/auth/login")
-                        .defaultSuccessUrl("/api/pages/home")
-                        .failureForwardUrl("/api/auth/login")
+                        .loginPage("/auth/login")
+                        .loginProcessingUrl("/auth/login")
+                        .defaultSuccessUrl("/auth/login")
+                        .failureForwardUrl("/auth/login")
                         .permitAll()
                         .disable())
                 .exceptionHandling(exception -> exception

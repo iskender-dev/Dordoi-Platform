@@ -1,15 +1,10 @@
 package com.example.DordoiPlatform.config;
 
-import com.example.DordoiPlatform.entities.User;
-import com.example.DordoiPlatform.exception.CustomException;
-import com.example.DordoiPlatform.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -21,25 +16,15 @@ import java.util.Map;
 
 @Service
 public class JwtService {
-    private final UserRepository userRepository;
     @Value("${jwt.secret-key}")
     private String secretKey;
     @Value("${jwt.expiration}")
     private long expiration;
 
-    public JwtService(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
-
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
 
-        String role = userDetails.getAuthorities()
-                .stream()
-                .findFirst()
-                .map(GrantedAuthority::getAuthority)
-                .orElse("ROLE_USER");
-
+        String role = userDetails.getAuthorities().toString();
         claims.put("role", role);
 
         Date issuedDate = new Date();
@@ -64,16 +49,6 @@ public class JwtService {
 
     public String getUserEmailFromToken(String token) {
         return getClaimsFromToken(token).getSubject();
-    }
-
-    public User getUserFromToken(String token) {
-        token = token.substring(7);
-        String email = getUserEmailFromToken(token);
-        return userRepository.findByEmail(email).orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
-    }
-
-    public String getRoleFromToken(String token) {
-        return (String) getClaimsFromToken(token).get("role");
     }
 
     private Key getSignInKey() {

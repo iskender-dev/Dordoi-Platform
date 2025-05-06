@@ -11,8 +11,6 @@ import lombok.AllArgsConstructor;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -21,7 +19,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.List;
 
 @Component
 @AllArgsConstructor
@@ -37,54 +34,35 @@ public class JwtFilter extends OncePerRequestFilter {
             @Nonnull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-
-        String jwt = null;
-        String userEmail = null;
-
         String authHeader = request.getHeader("Authorization");
+        String userEmail = null;
+        String jwt = null;
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             jwt = authHeader.substring(7);
-        } else {
-            Cookie[] cookies = request.getCookies();
-            if (cookies != null) {
-                for (Cookie cookie : cookies) {
-                    if ("access_token".equals(cookie.getName())) {
-                        jwt = cookie.getValue();
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (jwt != null) {
             try {
                 userEmail = jwtService.getUserEmailFromToken(jwt);
             } catch (ExpiredJwtException e) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                log.info("JWT expired: {}", e.getMessage());
+                log.info("JWT token expired: {}", e.getMessage());
             } catch (Exception e) {
-                log.info("JWT parsing error: {}", e.getMessage());
+                log.info("JWT token could not be parsed: {}", e.getMessage());
             }
         }
 
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
-            String role = jwtService.getRoleFromToken(jwt);
-
-            List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(role));
-
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                     userDetails,
                     null,
-                    authorities
+                    userDetails.getAuthorities()
             );
-
-            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            authToken.setDetails(
+                    new WebAuthenticationDetailsSource().buildDetails(request)
+            );
             SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 
         filterChain.doFilter(request, response);
     }
 }
-
